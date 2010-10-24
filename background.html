@@ -1,0 +1,106 @@
+<html>
+<!--children: Array[2]-->
+<!--0: Object-->
+<!--children: Array[24]-->
+<!--0: Object-->
+<!--dateAdded: 1272146193425-->
+<!--id: "3"-->
+<!--index: 0-->
+<!--parentId: "1"-->
+<!--title: "Readability"-->
+<!--url: "javascript:(function(){readStyle='style-apertura';readSize='size-medium';readMargin='margin-wide';_r…"-->
+<!--__proto__: Object-->
+<!--
+id ( string )
+The unique identifier for the node. IDs are unique within the current profile, and they remain valid even after the browser is restarted.
+parentId ( optional string )
+The id of the parent folder. Omitted for the root node.
+index ( optional integer )
+The 0-based position of this node within its parent folder.
+url ( optional string )
+The URL navigated to when a user clicks the bookmark. Omitted for folders.
+title ( string )
+The text displayed for the node.
+dateAdded ( optional number )
+When this node was created, in milliseconds since the epoch (new Date(dateAdded)).
+dateGroupModified ( optional number )
+When the contents of this folder last changed, in milliseconds since the epoch.
+children ( optional array of BookmarkTreeNode )
+An ordered list of children of this node.
+-->
+	<!--<script type="text/javascript" src="jquery.min.js"></script>-->
+	<script type="text/javascript" src="jsonpath-0.8.0.js"></script>
+	<script type="text/javascript">
+		var bookmarks = [];
+		var bookmarksOnly = [];
+		var flatterBookmarks = function (b) {
+			var ret = {
+				'id': b.id,
+				'parentId': b.parentId,
+				'index': b.index,
+				'url': b.url,
+				'title': b.title,
+				'dateAdded': b.dateAdded,
+				'dateGroupModified': b.dateGroupModified
+			};
+
+			if (b.children && b.children.length > 0) {
+				ret.type = 'folder';
+				for (var c = 0; c < b.children.length; ++c) {
+					flatterBookmarks(b.children[c]);
+				}
+			} else {
+				bookmarksOnly.push(ret);
+			}
+			bookmarks.push(ret);
+		};
+		
+		var searchBookmarks = function (links) {
+			var results = [];
+
+
+			for (var i = 0; i < bookmarksOnly.length; ++i) {
+				var bookmark = bookmarksOnly[i];
+				if (bookmark.url == url) {
+					results.push(bookmark);
+				}
+			}
+
+			return results;
+		};
+
+		var compareBookmarks = function (links, bookmarks) {
+			var urls = {}, bmUrls = {}, results = [], i = bookmarks.length;
+			while (--i) {
+				urls[bookmarks[i].url] = i;
+			}
+			i = links.length;
+			while (--i) {
+				if (urls[links[i].href]) results.push({link: links[i], bookmark: bookmarks[urls[links[i].href]]});
+			}
+			return results;
+		};
+
+		chrome.bookmarks.getTree(function (results) {
+			flatterBookmarks(results[0]);
+		});
+
+		var checkLinks = function (links, callback) {
+			var result = compareBookmarks(links, bookmarks);
+			console.info(result);
+
+			if (result.length > 0) {
+				callback(result);
+			}
+		};
+
+		chrome.extension.onRequest.addListener(
+		function(data, sender, sendResponse) {
+			if (data && data.act == 'checkLinks') {
+				checkLinks(data.links, sendResponse);
+			}
+		});
+
+
+	</script>
+</html>
